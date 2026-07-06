@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""rotor — read/set the Yaesu G-800 antenna rotator from Linux.
+
+Talks raw Hy-Gain DCU-1 (as spoken by the Idiom Press RotorEZ card) to the
+terminal server that fronts the rotor. PSTRotatorAz on the Windows PC keeps
+running and sharing the rotor; this tool reads alongside it. SET commands move
+the antenna and share the serial line with PSTRotator's polling — hence the
+confirmation prompt.
+
+Protocol (confirmed 2026-07-05):
+  read  : send "AI1;"     -> reply ";ddd"     (leading ';' + 3-digit degrees)
+  set   : send "AP1ddd;"  e.g. "AP1180;" -> turn to 180
+
+Usage:
+  rotor read                 print current bearing once
+  rotor watch [--interval S] print bearing continuously (Ctrl-C to stop)
+  rotor set <deg> [--yes]    turn to <deg> (0-359); prompts unless --yes
+  rotor gui                  launch the desktop compass UI
+
+Env overrides: ROTOR_HOST (default 192.168.115.99), ROTOR_PORT (default 4001).
+"""
+import argparse
+import os
+import sys
+import time
+
+# Resolve our real directory (through the ~/.local/bin symlink) so we can
+# import the sibling rotorlib module regardless of how we were invoked.
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from rotorlib import RotorClient, host_port  # noqa: E402
+
+
+def cmd_read(args):
+    host, port = host_port()
+    try:
+        with RotorClient() as c:
+            b = c.read_bearing()
+    except OSError as e:
+        print(f"rotor: connection error to {host}:{port}: {e}", file=sys.stderr)
+        return 2
+    if b is None:
+        print("rotor: no bearing returned (readback path down?)", file=sys.stderr)
+        return 1
+    print(f"{b}")
+    return 0
+
+
+def cmd_watch(args):
+    host, port = host_port()
+    try:
+        with RotorClient() as c:
+            print(f"# watching {host}:{port} every {args.interval}s — Ctrl-C to stop",
+                  file=sys.stderr)
+            while True:
+                start = time.monotonic()
+                b = c.read_bearing()
+                stamp = time.strftime("%H:%M:%S")
+                if b is None:
+                    print(f"{stamp}  ---  (no reply)", flush=True)
+                else:
+                    print(f"{stamp}  {b:3d}°", flush=True)
+                sleep = args.interval - (time.monotonic() - start)
+                if sleep > 0:
+                    time.sleep(sleep)
+    except KeyboardInterrupt:
+        print("\n# stopped", file=sys.stderr)
+        return 0
+    except OSError as e:
+        print(f"rotor: connection error to {host}:{port}: {e}", file=sys.stderr)
+        return 2
+
+
+def cmd_set(args):
+    host, port = host_port()
+    deg = args.degrees
+    if not (0 <= deg <= 359):
+        print(f"rotor: degrees must be 0-359 (got {deg})", file=sys.stderr)
+        return 2
+
+    if not args.yes:
+        try:
+            with RotorClient() as c:
+                cur = c.read_bearing()
+        except OSError:
+            cur = None
+        cur_txt = f"{cur}°" if cur is not None else "unknown"
+        print(f"Rotor is at {cur_txt}. Turn to {deg}°?  (shares the line "
+              f"with PSTRotator)")
+        try:
+            ans = input("  [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans not in ("y", "yes"):
+            print("aborted", file=sys.stderr)
+            return 1
+
+    try:
+        with RotorClient() as c:
+            cmd = c.set_azimuth(deg)
+            print(f"# sent {cmd.decode()} -> turning to {deg}°", file=sys.stderr)
+            if args.wait:
+                # watch it move toward the target for up to --wait seconds
+                deadline = time.monotonic() + args.wait
+                last = None
+                while time.monotonic() < deadline:
+                    b = c.read_bearing()
+                    if b is not None and b != last:
+                        print(f"  {b:3d}°", file=sys.stderr)
+                        last = b
+                        if abs(((b - deg + 180) % 360) - 180) <= args.tolerance:
+                            print(f"# arrived (within {args.tolerance}°)",
+                                  file=sys.stderr)
+                            break
+                    time.sleep(1.0)
+    except OSError as e:
+        print(f"rotor: connection error to {host}:{port}: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def cmd_gui(args):
+    import rotor_gui
+    return rotor_gui.main()
+
+
+def main():
+    p = argparse.ArgumentParser(prog="rotor", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("read", help="print current bearing once").set_defaults(func=cmd_read)
+
+    w = sub.add_parser("watch", help="print bearing continuously")
+    w.add_argument("--interval", type=float, default=1.0, help="seconds between polls")
+    w.set_defaults(func=cmd_watch)
+
+    s = sub.add_parser("set", help="turn to <deg> (0-359)")
+    s.add_argument("degrees", type=int)
+    s.add_argument("--yes", "-y", action="store_true", help="skip confirmation")
+    s.add_argument("--wait", type=float, default=90.0,
+                   help="seconds to watch it turn (0 = fire and forget)")
+    s.add_argument("--tolerance", type=int, default=2, help="arrival tolerance in degrees")
+    s.set_defaults(func=cmd_set)
+
+    sub.add_parser("gui", help="launch the desktop compass UI").set_defaults(func=cmd_gui)
+
+    args = p.parse_args()
+    sys.exit(args.func(args))
+
+
+if __name__ == "__main__":
+    main()
