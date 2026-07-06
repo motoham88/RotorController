@@ -1,7 +1,7 @@
 # rotor
 
-Read and set a **Yaesu G-800** antenna rotator from Linux, over the network — no
-Wine, no Windows.
+Read and set a **Yaesu G-800** antenna rotator over the network — from Linux or
+Windows 11.
 
 The rotor is driven by an **Idiom Press RotorEZ** serial card, which speaks the
 **Hy-Gain DCU-1** protocol. A terminal server exposes that serial port as a raw
@@ -9,14 +9,42 @@ TCP socket. `PSTRotatorAz` runs on a Windows PC and shares the rotor among
 several operating positions; this tool reads and sets **alongside** it without
 stealing the line.
 
-## Install
+## Layout
 
-`rotor` is a single self-contained Python 3 script (stdlib only). Put it on your
-PATH:
+| File | Role |
+|---|---|
+| `rotorlib.py` | shared `RotorClient` — socket + DCU-1 protocol |
+| `rotorcli.py` | CLI implementation (read/watch/set/gui) |
+| `rotor` | Linux launcher (thin shim over `rotorcli`) |
+| `rotor_gui.py` | Tkinter compass GUI |
+| `tools/poller.py` | diagnostic poller |
+
+## Install (Linux)
+
+Pure-stdlib Python 3 — no dependencies. Put the launcher on your PATH:
 
 ```sh
 ln -s "$PWD/rotor" ~/.local/bin/rotor
 ```
+
+## Windows 11
+
+The client runs on Windows with a normal Python 3 install (`py rotor_gui.py`),
+but you can also get **standalone `.exe` files that need no Python installed**:
+
+- **Prebuilt:** the `build-windows` GitHub Actions workflow compiles `RotorGUI.exe`
+  (compass app) and `rotor.exe` (CLI) with PyInstaller on a Windows runner. Grab
+  them from the run's **Artifacts** (`rotor-windows-x64`).
+- **Build it yourself on a Windows box:**
+
+  ```bat
+  py -m pip install pyinstaller
+  pyinstaller --onefile --windowed --name RotorGUI --hidden-import rotorlib rotor_gui.py
+  pyinstaller --onefile --console  --name rotor --hidden-import rotorlib --hidden-import rotor_gui rotorcli.py
+  ```
+
+  The executables land in `dist\`. (PyInstaller can't cross-compile from Linux —
+  it must run on Windows, which is why the CI runner does it.)
 
 ## Usage
 

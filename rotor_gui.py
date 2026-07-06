@@ -17,11 +17,16 @@ import time
 import tkinter as tk
 from tkinter import font as tkfont
 
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+# Under a PyInstaller frozen build the sibling modules are bundled already.
+if not getattr(sys, "frozen", False):
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from rotorlib import RotorClient, host_port  # noqa: E402
 
 POLL_INTERVAL = 1.0     # seconds between bearing reads
 TOLERANCE = 2           # arrival tolerance (deg) for the "on target" cue
+
+# native UI font per platform (Segoe UI on Windows 11, DejaVu on Linux)
+FONT = "Segoe UI" if sys.platform.startswith("win") else "DejaVu Sans"
 
 # palette
 BG = "#0f1216"
@@ -115,13 +120,13 @@ class RotorApp:
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
 
-        self.big_font = tkfont.Font(family="DejaVu Sans", size=30, weight="bold")
+        self.big_font = tkfont.Font(family=FONT, size=30, weight="bold")
         self.readout = tk.Label(root, text="---°", font=self.big_font,
                                 fg=TEXT, bg=BG)
         self.readout.grid(row=1, column=0, columnspan=4)
 
         # target entry + Turn
-        entry_font = tkfont.Font(family="DejaVu Sans", size=13)
+        entry_font = tkfont.Font(family=FONT, size=13)
         tk.Label(root, text="Go to:", fg=MUTED, bg=BG, font=entry_font)\
             .grid(row=2, column=0, sticky="e", padx=(16, 2), pady=6)
         self.target_var = tk.StringVar()
@@ -249,7 +254,7 @@ class RotorApp:
         for name, deg in [("N", 0), ("E", 90), ("S", 180), ("W", 270)]:
             tx, ty = polar(cx, cy, r - 30, deg)
             c.create_text(tx, ty, text=name, fill=CARD,
-                          font=("DejaVu Sans", 13, "bold"))
+                          font=(FONT, 13, "bold"))
 
         # target / preview marker
         for val, col, dash in [(self.target, TARGET, ()),
