@@ -101,3 +101,11 @@ the shared line, so avoid hammering it.
 - `poller.py` — the original diagnostic poller (sends `AI1;` every second, prints
   raw hex + parsed digits, auto-reconnects). Handy for confirming the readback
   path is alive at the hardware level.
+
+## docs/
+
+- [`overlap.md`](docs/overlap.md) — why the 450° overlap is a hardware feature of
+  the G-800 that no client (this tool or PSTRotator) can control.
+- [`stopper-heading-checklist.md`](docs/stopper-heading-checklist.md) — how to
+  relocate the mechanical stopper/dead-zone at the equipment (shared-rig, tower
+  work).
