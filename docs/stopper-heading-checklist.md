@@ -93,16 +93,16 @@ Adapted from the G-800DXA manual "Indoor Performance Check and Alignment"
       anywhere on the dial).
 - [ ] SELECT SWITCH → **OPERATION MODE**, power cycle.
 
-## Part 5 — Recalibrate the RotorCard
+## Part 5 — Recalibrate the ERC-Mini
 
-So the serial bearing (`AI1;`) matches the controller after the shift.
+So the serial bearing (GS-232B `C` → `AZ=ddd`) matches the controller after the shift.
 
-- [ ] Follow the **RotorCard manual's `K` calibration-mode** procedure (I don't
-      have that document — request it from Idiom Press / Ham Supply). Note: per the
-      protocol doc, serial-set option overrides revert on power-off, so persistent
-      settings come from the board's jumpers.
+- [ ] Recalibrate the **ERC-Mini** with its own **Service-Tool** (azimuth
+      start/end setpoints against the rotator's pot), per the ERC-Mini manual. This
+      replaces the old Idiom Press RotorCard `K` calibration-mode procedure, which no
+      longer applies now that the ERC-Mini fronts the rotator.
 - [ ] Verify: `rotor read` matches the controller dial at several headings
-      (N/E/S/W). If they disagree, the RotorCard calibration isn't done.
+      (N/E/S/W). If they disagree, the ERC-Mini calibration isn't done.
 
 ## Part 6 — Verify end-to-end
 

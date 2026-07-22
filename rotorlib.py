@@ -1,18 +1,20 @@
-"""rotorlib — talk Hy-Gain DCU-1 (RotorEZ) to the Yaesu G-800 over TCP.
+"""rotorlib — talk Yaesu GS-232B to the Yaesu G-800 over TCP.
 
-Shared by the `rotor` CLI and the `rotor-gui` desktop app.
+Shared by the `rotor` CLI and the `rotor-gui` desktop app. The rotor is driven
+by an ERC-Mini (Easy Rotor Control) set to GS-232B emulation; a terminal server
+exposes its serial port as a raw TCP socket.
 
-Protocol (confirmed 2026-07-05):
-  read : send b"AI1;"    -> reply b";ddd"   (leading ';' + 3-digit degrees)
-  set  : send b"AP1ddd;" -> turn to ddd     (zero-padded, 0-359)
+Protocol (GS-232B, confirmed live 2026-07-21):
+  read : send b"C\r"    -> reply b"AZ=ddd\r\n"  (e.g. b"AZ=300\r\n" = 300 deg)
+  set  : send b"Mddd\r" -> turn to ddd          (zero-padded, 0-359)
 """
 import os
 import re
 import socket
 import time
 
-READ_CMD = b"AI1;"
-BEARING_RE = re.compile(rb";(\d{3})")
+READ_CMD = b"C\r"
+BEARING_RE = re.compile(rb"AZ=(\d{3})")
 
 DEFAULT_HOST = "192.168.115.99"
 DEFAULT_PORT = 4001
@@ -26,11 +28,11 @@ def host_port():
 def format_set(deg: int) -> bytes:
     if not (0 <= deg <= 359):
         raise ValueError(f"degrees must be 0-359 (got {deg})")
-    return f"AP1{deg:03d};".encode("ascii")
+    return f"M{deg:03d}\r".encode("ascii")
 
 
 class RotorClient:
-    """A persistent connection to the rotor's raw DCU-1 TCP port.
+    """A persistent connection to the rotor's raw GS-232B TCP port.
 
     Reads share the terminal server's RX broadcast with PSTRotator (non-
     intrusive); writes contend with its ~1 Hz polling, so don't hammer set().
@@ -62,7 +64,7 @@ class RotorClient:
             self.connect()
 
     def read_bearing(self, poll_deadline=4.0):
-        """Send one AI1; and return the bearing (int) or None on timeout."""
+        """Send one C and return the bearing (int) or None on timeout."""
         self._ensure()
         self.sock.sendall(READ_CMD)
         deadline = time.monotonic() + poll_deadline
@@ -82,7 +84,7 @@ class RotorClient:
         return None
 
     def set_azimuth(self, deg: int):
-        """Send AP1ddd; to turn to deg. Raises ValueError if out of range."""
+        """Send Mddd to turn to deg. Raises ValueError if out of range."""
         cmd = format_set(deg)
         self._ensure()
         self.sock.sendall(cmd)
