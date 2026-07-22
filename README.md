@@ -29,6 +29,10 @@ ln -s "$PWD/rotor" ~/.local/bin/rotor
 
 ## Windows 11
 
+> **Hardware-verified 2026-07-21:** the Windows 11 client read the live bearing
+> and commanded the rotor to a new heading end-to-end on real hardware (ERC-Mini
+> in GS-232B mode, over the shared line).
+
 The client runs on Windows with a normal Python 3 install (`py rotor_gui.py`),
 but you can also get **standalone `.exe` files that need no Python installed**:
 
