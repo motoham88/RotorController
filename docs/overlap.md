@@ -5,24 +5,34 @@ the Yaesu G-800 rotator itself. No network client — this `rotor` tool,
 PSTRotatorAz, or any Windows operating position — can enable, disable, or prevent
 it. It is **not software-addressable**.
 
-> Terminology: this is the **overlap** feature. Don't confuse it with the Rotor-EZ
-> protocol's separate, unrelated **"overshoot option"** (`O`/`o` commands).
+> Terminology: this is the **overlap** feature — the mechanical 90° over-travel of
+> the rotator. Don't confuse it with any controller-side reporting mode.
 
 ## Why software can't touch it
 
-Everything that talks to the rig speaks the Idiom Press Rotor-EZ/RotorCard
-protocol (a superset of Hy-Gain DCU-1). Per Idiom Press's own protocol document:
+The rig is now driven by an **ERC-Mini** controller in **Yaesu GS-232B** emulation
+(it replaced an Idiom Press RotorEZ/RotorCard on the DCU-1 protocol). The argument
+below is protocol-agnostic — it holds regardless of which controller/emulation
+fronts the rotator:
 
-- The set command **`AP1xxx` accepts only `000`–`360`.** You physically cannot
-  command a bearing in the 360–450 overlap zone.
-- The read **`AI1;` returns only `000`–`360`.** The overlap zone is never even
-  reported back over the wire.
-- There is **no overlap enable/disable command anywhere** in the command set —
-  only endpoint, overshoot, unstick, jam-protection toggles, and calibration
-  (`K`/`k`).
+- **The host only ever sends a bare target azimuth** (`Mddd` under GS-232B, `AP1ddd`
+  under DCU-1). It never specifies a *path*, so it cannot ask for the long way
+  round through the overlap versus the short way through north.
+- **The controller, not the host, chooses the travel path** from the current
+  position and its calibration (see below). Every client — this tool, PSTRotator,
+  any Windows position — sends the same bare target and gets the same board-chosen
+  behaviour.
+- **The stopper heading is a mechanical/installation setting**, not a wire command.
 
-So no host — ours or PSTRotator — can command into, read, or block the overlap.
-They are all bounded by the same wire protocol.
+So no host can command into, read-around, or block the overlap: they are all bounded
+by the same "send a bare target, let the board pick the path" contract.
+
+> ⚠️ **Not re-verified after the ERC-Mini swap:** GS-232B exposes 360°/450° reporting
+> modes (`P36`/`P45`) and the controller *may* report a bearing in the 360–450 zone
+> (e.g. `AZ=380`) where DCU-1's `AI1;` only ever returned 000–360. That changes what
+> the wire can *report*, not the core claim above (the host still sends only a bare
+> target). If you need the exact ERC-Mini reporting behaviour on this rig, confirm it
+> live rather than trusting the old DCU-1-specific bullets this section replaced.
 
 ## The overlap belongs to the rotator, not the controller or the software
 
@@ -42,7 +52,7 @@ and antenna are physically installed, not by any setting a host can send.
 
 The behaviour is **path-based** (confirmed on this rig): from 350°, commanding 10°
 drives the antenna *forward* through the overlap (350→370) rather than back
-through north (350→10). The RotorCard/controller chooses that direction from the
+through north (350→10). The ERC-Mini/controller chooses that direction from the
 current position and its calibration. The host only ever sends a bare 0–360
 target — it has no say in the path.
 
@@ -58,8 +68,8 @@ the equipment):
 1. **Stopper-heading placement** — where the mechanical dead zone sits. Put it in
    your least-used direction so the overlap sector falls out of the way. See
    [`stopper-heading-checklist.md`](stopper-heading-checklist.md).
-2. **RotorCard calibration** — how the pot-to-bearing mapping is set across the
-   450° span.
+2. **Controller calibration** — how the ERC-Mini's pot-to-bearing mapping is set
+   across the 450° span.
 
 ## Sources
 

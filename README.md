@@ -3,8 +3,8 @@
 Read and set a **Yaesu G-800** antenna rotator over the network — from Linux or
 Windows 11.
 
-The rotor is driven by an **Idiom Press RotorEZ** serial card, which speaks the
-**Hy-Gain DCU-1** protocol. A terminal server exposes that serial port as a raw
+The rotor is driven by an **ERC-Mini** (Easy Rotor Control) controller set to
+**Yaesu GS-232B** emulation. A terminal server exposes that serial port as a raw
 TCP socket. `PSTRotatorAz` runs on a Windows PC and shares the rotor among
 several operating positions; this tool reads and sets **alongside** it without
 stealing the line.
@@ -13,7 +13,7 @@ stealing the line.
 
 | File | Role |
 |---|---|
-| `rotorlib.py` | shared `RotorClient` — socket + DCU-1 protocol |
+| `rotorlib.py` | shared `RotorClient` — socket + GS-232B protocol |
 | `rotorcli.py` | CLI implementation (read/watch/set/gui) |
 | `rotor` | Linux launcher (thin shim over `rotorcli`) |
 | `rotor_gui.py` | Tkinter compass GUI |
@@ -79,17 +79,19 @@ Target defaults to `192.168.115.99:4001`. Override with environment variables:
 ROTOR_HOST=192.168.1.50 ROTOR_PORT=4001 rotor read
 ```
 
-## Protocol (Hy-Gain DCU-1, as spoken by RotorEZ)
+## Protocol (Yaesu GS-232B, as spoken by the ERC-Mini)
 
-ASCII, `;`-terminated, over raw TCP. Reverse-engineered from a packet capture
-and confirmed live 2026-07-05.
+ASCII, carriage-return-terminated, over raw TCP. Confirmed live 2026-07-21 by
+capturing the ERC-Mini's replies to PSTRotator's polling on the shared line.
 
 | Action | Send | Reply |
 |---|---|---|
-| Read bearing | `AI1;` | `;ddd` — leading `;` then 3 ASCII digits, e.g. `;188` = 188° |
-| Set azimuth | `AP1ddd;` | (none) — e.g. `AP1270;` turns to 270° |
+| Read bearing | `C` + CR | `AZ=ddd` + CR/LF — literal `AZ=` then 3 ASCII digits, e.g. `AZ=188` = 188° |
+| Set azimuth | `Mddd` + CR | (none) — e.g. `M270` turns to 270° |
 
-Degrees are zero-padded to 3 digits (`AP1005;` = 5°). Valid range 0–359.
+Degrees are zero-padded to 3 digits (`M005` = 5°). Valid set range 0–359. In the
+360–450° overlap zone the controller may *report* a 3-digit value above 359
+(e.g. `AZ=380`); the client passes that through unclamped.
 
 The terminal server broadcasts the serial RX to every connected TCP client, so
 `rotor read`/`watch` see the same bearing stream PSTRotator does — reading is
@@ -98,7 +100,7 @@ the shared line, so avoid hammering it.
 
 ## tools/
 
-- `poller.py` — the original diagnostic poller (sends `AI1;` every second, prints
+- `poller.py` — the original diagnostic poller (sends `C` every second, prints
   raw hex + parsed digits, auto-reconnects). Handy for confirming the readback
   path is alive at the hardware level.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Poll the RotorEZ (Yaesu G-800) over raw DCU-1 on the terminal server.
+"""Poll the ERC-Mini (Yaesu G-800) over raw GS-232B on the terminal server.
 
-Sends `AI1;` (read bearing) once per second and prints anything that comes
+Sends `C` (read bearing) once per second and prints anything that comes
 back, with timestamp / raw hex / parsed digits. Auto-reconnects on drop.
 """
 import socket
@@ -10,8 +10,8 @@ import sys
 
 HOST, PORT = "192.168.115.99", 4001
 DURATION = 120          # seconds total
-POLL_EVERY = 1.0        # seconds between AI1; polls
-READ_CMD = b"AI1;"
+POLL_EVERY = 1.0        # seconds between C polls
+READ_CMD = b"C\r"
 
 def parse(data: bytes) -> str:
     digits = "".join(chr(b) for b in data if 0x30 <= b <= 0x39)

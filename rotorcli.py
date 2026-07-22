@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """rotorcli — command-line interface for the Yaesu G-800 rotator.
 
-Talks raw Hy-Gain DCU-1 (as spoken by the Idiom Press RotorEZ/RotorCard) to the
+Talks Yaesu GS-232B (as spoken by the ERC-Mini rotor controller) to the
 terminal server that fronts the rotor. PSTRotatorAz on the Windows PC keeps
 running and sharing the rotor; this reads alongside it. SET commands move the
 antenna and share the serial line with PSTRotator's polling — hence the prompt.
 
-Protocol (confirmed 2026-07-05):
-  read  : send "AI1;"     -> reply ";ddd"     (leading ';' + 3-digit degrees)
-  set   : send "AP1ddd;"  e.g. "AP1180;" -> turn to 180
+Protocol (GS-232B, confirmed live 2026-07-21):
+  read  : send "C"       -> reply "AZ=ddd"    (e.g. "AZ=300" = 300 deg)
+  set   : send "Mddd"    e.g. "M180" -> turn to 180
 
 Usage:
   rotor read                 print current bearing once
