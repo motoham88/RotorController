@@ -29,6 +29,10 @@ ln -s "$PWD/rotor" ~/.local/bin/rotor
 
 ## Windows 11
 
+> **Hardware-verified 2026-07-21:** the Windows 11 client read the live bearing
+> and commanded the rotor to a new heading end-to-end on real hardware (ERC-Mini
+> in GS-232B mode, over the shared line).
+
 The client runs on Windows with a normal Python 3 install (`py rotor_gui.py`),
 but you can also get **standalone `.exe` files that need no Python installed**:
 
@@ -103,9 +107,14 @@ the shared line, so avoid hammering it.
 - `poller.py` — the original diagnostic poller (sends `C` every second, prints
   raw hex + parsed digits, auto-reconnects). Handy for confirming the readback
   path is alive at the hardware level.
+- `nodered-rotor-flow.json` — importable Node-RED flow that polls the bearing to
+  MQTT and turns the rotor from an MQTT topic (see the docs entry below).
 
 ## docs/
 
+- [`nodered-homeassistant.md`](docs/nodered-homeassistant.md) — interface Node-RED
+  and Home Assistant to the rotor over the same GS-232B-over-TCP path, alongside
+  PSTRotator.
 - [`overlap.md`](docs/overlap.md) — why the 450° overlap is a hardware feature of
   the G-800 that no client (this tool or PSTRotator) can control.
 - [`stopper-heading-checklist.md`](docs/stopper-heading-checklist.md) — how to
